@@ -1,0 +1,7 @@
+[package]
+name = "exam_q2"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+require_lifetimes = "0.3.0"
