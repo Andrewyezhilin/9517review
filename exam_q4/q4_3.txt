@@ -1,0 +1,24 @@
+Q4.3
+
+macro_rules! duration {
+    (@term $n:expr, h) => { $n * 60 * 60 };
+    (@term $n:expr, m) => { $n * 60 };
+    (@term $n:expr, s) => { $n };
+    ($($n:literal $unit:tt),+ $(,)?) => {
+        ::std::time::Duration::from_secs(0 $(+ duration!(@term $n, $unit))+)
+    };
+}
+
+The last rule matches one or more comma-separated terms, each an integer
+literal followed by a unit token (h, m or s). For every term it expands
+duration!(@term n, unit), and the three internal @term rules convert one term
+to seconds (h -> n*3600, m -> n*60, s -> n). The results are summed with
+repetition (0 + term + term + ...) and passed to Duration::from_secs. The
+$(,)? allows an optional trailing comma, and repeated units like two `s`
+terms just add up.
+
+Checked against the examples:
+duration![90 s]                  -> 90s
+duration![1 h, 30 m]             -> 5400s
+duration![2 h, 15 m, 30 s]       -> 8130s
+duration![30 s, 1 m, 45 s, 15 s] -> 150s
