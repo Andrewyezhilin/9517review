@@ -1,21 +1,21 @@
 Q4.3
 
 macro_rules! duration {
-    (@term $n:expr, h) => { $n * 60 * 60 };
-    (@term $n:expr, m) => { $n * 60 };
-    (@term $n:expr, s) => { $n };
-    ($($n:literal $unit:tt),+ $(,)?) => {
-        ::std::time::Duration::from_secs(0 $(+ duration!(@term $n, $unit))+)
-    };
+    ($n:literal h) => { std::time::Duration::from_secs($n * 60 * 60) };
+    ($n:literal m) => { std::time::Duration::from_secs($n * 60) };
+    ($n:literal s) => { std::time::Duration::from_secs($n) };
+    ($n:literal h, $($rest:tt)+) => { duration![$n h] + duration![$($rest)+] };
+    ($n:literal m, $($rest:tt)+) => { duration![$n m] + duration![$($rest)+] };
+    ($n:literal s, $($rest:tt)+) => { duration![$n s] + duration![$($rest)+] };
 }
 
-The last rule matches one or more comma-separated terms, each an integer
-literal followed by a unit token (h, m or s). For every term it expands
-duration!(@term n, unit), and the three internal @term rules convert one term
-to seconds (h -> n*3600, m -> n*60, s -> n). The results are summed with
-repetition (0 + term + term + ...) and passed to Duration::from_secs. The
-$(,)? allows an optional trailing comma, and repeated units like two `s`
-terms just add up.
+The first three rules handle a single term: an integer literal followed by h,
+m or s becomes Duration::from_secs with the right conversion (h -> n*3600,
+m -> n*60, s -> n). The last three rules handle a term followed by a comma
+and more terms: they convert the first term and recursively call duration!
+on the rest, adding the Durations together (Duration implements Add).
+For example duration![1 h, 30 m] expands to duration![1 h] + duration![30 m]
+= from_secs(3600) + from_secs(1800) = 5400 seconds.
 
 Checked against the examples:
 duration![90 s]                  -> 90s
