@@ -1,0 +1,51 @@
+Q1.2
+
+1) What does the return type Option<i32> express, and what must a caller do
+   before it can use the value inside? (1 mark)
+
+Option<i32> expresses, in the type system itself, that the function may or may
+not produce a value: it returns Some(v) if an even number is found, and None
+if there is no even number. Absence of a result is an explicit, first-class
+value rather than a special sentinel.
+
+Before using the inner i32, the caller must explicitly handle both cases and
+extract the value, e.g. with pattern matching (`match` or `if let Some(v)`),
+or with a method such as `unwrap_or`, `expect`, or `unwrap`. An Option<i32>
+cannot be used directly as an i32.
+
+2) The C version returns int *, which may be NULL. Explain the bug that can
+   occur if a caller forgets to check for NULL. (1 mark)
+
+If the list contains no even number, first_even returns NULL. A caller that
+forgets to check and immediately dereferences the result (e.g.
+`int x = *first_even(values, n);`) dereferences a null pointer. This is
+undefined behaviour in C: typically a segmentation fault and crash, but it can
+also silently corrupt data or become a security vulnerability. Crucially, the
+C compiler accepts this code without complaint, because `int *` does not
+distinguish "valid pointer" from "no result" -- the check relies entirely on
+programmer discipline, and the bug only shows up at run time.
+
+3) Explain how Rust's type system makes the equivalent mistake impossible to
+   compile. (1 mark)
+
+In Rust, Option<i32> and i32 are different types, so code that tries to use
+the return value directly as a number (e.g. `first_even(&values) + 1`) is a
+type error. The only ways to get the i32 out force the None case to be dealt
+with: `match` is exhaustive, so omitting the None arm is a compile-time error,
+and even `unwrap()` is an explicit, visible decision that panics safely rather
+than causing undefined behaviour. There is no null value that can silently
+inhabit i32, so "forgot to check" simply cannot get past the compiler.
+
+4) Briefly argue one advantage or one disadvantage of Rust's Option-based
+   approach compared to C's null pointers. (1 mark)
+
+Advantage: the possibility of "no result" is visible in the function's
+signature and enforced by the compiler, so every caller is forced to think
+about the missing case at compile time. This eliminates an entire class of
+run-time bugs (null-pointer dereferences / undefined behaviour) that in C
+depend purely on programmer discipline -- and it costs nothing at run time,
+since Option<i32> is compiled as efficiently as a sentinel check.
+
+(An acceptable disadvantage instead: Option adds ceremony -- callers must
+match or unwrap even when they "know" the value is present, and lazy use of
+.unwrap() can turn the missing case into a run-time panic anyway.)
