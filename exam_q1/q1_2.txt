@@ -1,0 +1,32 @@
+Q1.2
+
+1.
+Option<i32> says right in the type that the function might not have an answer:
+you get Some(v) if there was an even number, and None if there wasn't. Before
+the caller can touch the i32 inside, they have to unwrap it somehow, e.g.
+match on it, use if let Some(v), or something like unwrap_or / expect. You
+can't just use an Option<i32> as a number directly.
+
+2.
+When there's no even number the C function returns NULL. If the caller
+forgets the NULL check and just dereferences the result, that's a null
+pointer dereference, which is undefined behaviour. Usually the program
+segfaults, but it could also corrupt memory or be exploitable. The worst part
+is the compiler is fine with it, since int* looks the same whether it's a
+real pointer or NULL, so you only find out at runtime.
+
+3.
+In Rust the same mistake doesn't even compile. Option<i32> is a different
+type from i32, so trying to use the return value as a number straight away is
+a type error. To get the i32 out you have to go through match (which is
+exhaustive, so you can't leave out the None arm) or an explicit method like
+unwrap(). And even unwrap is something you visibly chose to write, and it
+panics rather than doing anything undefined. There's no NULL that can hide
+inside an i32, so forgetting the check isn't possible.
+
+4.
+An advantage: the "might be missing" part is in the function signature, so
+the compiler forces every caller to deal with the None case. With C's NULL it
+all depends on the programmer remembering the check. So a whole category of
+runtime crashes turns into compile errors instead, and Option<i32> doesn't
+even cost anything extra at runtime.

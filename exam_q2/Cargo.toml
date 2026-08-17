@@ -1,0 +1,19 @@
+[package]
+name = "exam_q2"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "exam_q2_lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "exam_q2"
+path = "src/main.rs"
+
+[[bin]]
+name = "exam_q2_alt"
+path = "src/main_alt.rs"
+
+[dependencies]
+require_lifetimes = "0.3.0"

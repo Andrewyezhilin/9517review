@@ -1,0 +1,24 @@
+Q3.2
+
+1.
+sort requires the elements to implement Ord (a total ordering). f64 only
+implements PartialOrd, not Ord, because of NaN: NaN isn't equal to, less than
+or greater than anything (even itself), so floats don't have a total order.
+The compiler error is "the trait bound `f64: Ord` is not satisfied".
+
+2.
+No, there's no runtime cost. sort is generic and Rust monomorphises generics:
+the compiler generates a version of sort specialised for the concrete element
+type at compile time, and the comparisons compile down to direct calls (which
+can then be inlined). So both "which type am I sorting" and "how do I compare
+two elements" are resolved statically. This is static dispatch, unlike say
+qsort in C which goes through a function pointer for every comparison, or a
+dynamically typed language that has to inspect the values at runtime.
+
+3.
+    readings.sort_by(f64::total_cmp);
+
+(sort_by takes a comparison function, and f64::total_cmp gives a total order
+over floats, so this compiles and sorts in increasing order, giving
+[1.0, 2.5, 3.75]. Another accepted spelling of the same idea:
+readings.sort_by(|a, b| a.partial_cmp(b).unwrap());)

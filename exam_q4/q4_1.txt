@@ -1,0 +1,35 @@
+Q4.1
+
+1.
+This is a deadlock (the thread deadlocks with itself by locking the same
+mutex twice). In main, `guard` from balance.lock() is still alive when
+log_balance is called: it isn't dropped until the end of main. Inside
+log_balance, balance.lock() blocks until the mutex is free, but the mutex is
+held by its own caller, and the caller can't release it until log_balance
+returns. Rust's std Mutex is not reentrant, so the thread waits on itself
+forever and nothing is ever printed.
+
+2.
+Rust's compile-time guarantees are about memory safety, and a data race
+(unsynchronised simultaneous access to the same memory) is a memory safety
+violation, so the ownership/Send/Sync rules can rule it out. A deadlock never
+accesses data unsafely -- every access here is properly locked. It's a
+liveness/logic problem, i.e. the program is safe but stuck, and whether a
+lock will be released in time depends on runtime control flow, which the type
+system doesn't track. Safe Rust explicitly permits deadlocks.
+
+3.
+Release the lock before calling log_balance, e.g. put the first lock in its
+own scope (or call drop(guard)):
+
+    let balance = Mutex::new(100);
+    {
+        let mut guard = balance.lock().unwrap();
+        *guard += 10;
+    }                       // guard dropped here, mutex unlocked
+    log_balance(&balance);
+    println!("Final balance: {}", *balance.lock().unwrap());
+
+It works because the MutexGuard's Drop unlocks the mutex when it goes out of
+scope, so by the time log_balance tries to lock, the mutex is free. The
+program prints "Current balance: 110" then "Final balance: 110".

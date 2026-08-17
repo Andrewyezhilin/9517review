@@ -1,0 +1,27 @@
+Q1.1
+
+1.
+It's the borrow checker that rejects this. The loop "for n in &numbers"
+borrows numbers immutably, and that borrow lasts for the whole loop because
+the iterator holds it. Inside the loop we call numbers.push(40), but push
+takes &mut self, so it needs a mutable borrow at the same time. Rust doesn't
+allow a mutable borrow to exist while there's still an immutable one, so the
+compiler gives error E0502 (cannot borrow numbers as mutable because it is
+also borrowed as immutable). The rule is there for a good reason here: push
+can reallocate the vec's buffer, and then the iterator would be pointing at
+freed memory.
+
+2.
+Do the check first, then push after the borrow is gone. The whole loop can
+just become:
+
+    if numbers.contains(&20) {
+        numbers.push(40);
+    }
+
+contains only borrows numbers immutably while it runs, and that's finished
+before push asks for the mutable borrow, so nothing overlaps and it compiles.
+It still appends 40 whenever 20 is in the vec, and prints [10, 20, 30, 40].
+
+Another option would be setting a bool flag inside the loop and pushing after
+the loop ends, which works for the same reason.
