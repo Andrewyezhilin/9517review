@@ -159,13 +159,13 @@ fn main() {
             dir @ ("L" | "R" | "U" | "D") => {
                 let changed = do_move(&mut board, dir, &mut score);
                 if changed {
+                    spawn_tile(&mut board);
                     if has_won(&board) {
                         println!("You win!");
                         print_board(&board);
                         println!("Score: {score}");
                         return;
                     }
-                    spawn_tile(&mut board);
                     if !any_move_possible(&board) {
                         println!("You lost!");
                         print_board(&board);
