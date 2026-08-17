@@ -1,44 +1,27 @@
 Q1.1
 
-1) Which feature of Rust prevents this code from compiling? (1 mark)
+1.
+It's the borrow checker that rejects this. The loop "for n in &numbers"
+borrows numbers immutably, and that borrow lasts for the whole loop because
+the iterator holds it. Inside the loop we call numbers.push(40), but push
+takes &mut self, so it needs a mutable borrow at the same time. Rust doesn't
+allow a mutable borrow to exist while there's still an immutable one, so the
+compiler gives error E0502 (cannot borrow numbers as mutable because it is
+also borrowed as immutable). The rule is there for a good reason here: push
+can reallocate the vec's buffer, and then the iterator would be pointing at
+freed memory.
 
-The borrow checker (Rust's ownership and borrowing rules) rejects this code.
+2.
+Do the check first, then push after the borrow is gone. The whole loop can
+just become:
 
-`for n in &numbers` creates a shared (immutable) borrow of `numbers`, which is
-held by the loop's iterator for as long as the loop may keep iterating.
-Inside the loop body, `numbers.push(40)` calls a method that takes `&mut self`,
-i.e. it needs an exclusive (mutable) borrow of `numbers` at the same time.
-
-This violates Rust's aliasing rule: at any point you may have either any number
-of immutable borrows OR exactly one mutable borrow, but never both. The
-compiler therefore reports error E0502: "cannot borrow `numbers` as mutable
-because it is also borrowed as immutable".
-
-This rule exists to prevent iterator invalidation: `push` may reallocate the
-Vec's backing buffer, which would leave the iterator pointing at freed memory
-(a use-after-free / dangling pointer bug that C++ would happily allow).
-
-2) One way to fix it (1 mark)
-
-Do not mutate the Vec while it is borrowed by the iterator. Instead, first
-check (with only an immutable borrow) whether 20 is present, and only then
-push, after the immutable borrow has ended:
-
-    fn main() {
-        let mut numbers = vec![10, 20, 30];
-
-        if numbers.contains(&20) {
-            numbers.push(40);
-        }
-
-        println!("{numbers:?}");
+    if numbers.contains(&20) {
+        numbers.push(40);
     }
 
-The immutable borrow taken by `contains` ends before `push` needs its mutable
-borrow, so the two borrows never overlap. The program compiles and prints:
+contains only borrows numbers immutably while it runs, and that's finished
+before push asks for the mutable borrow, so nothing overlaps and it compiles.
+It still appends 40 whenever 20 is in the vec, and prints [10, 20, 30, 40].
 
-    [10, 20, 30, 40]
-
-(Other acceptable fixes: record a `bool` flag inside the loop and push after
-the loop finishes, or iterate over indices `0..numbers.len()` so no reference
-into the Vec is held across the push.)
+Another option would be setting a bool flag inside the loop and pushing after
+the loop ends, which works for the same reason.
