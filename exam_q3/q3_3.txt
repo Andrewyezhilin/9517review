@@ -1,0 +1,28 @@
+Q3.3
+
+1.
+This is the orphan rule (trait coherence). You can only implement a trait for
+a type if your crate defines at least one of the two: the trait or the type.
+Here both Display and Vec<u32> come from the standard library, so the impl is
+rejected (error E0117). The rule prevents conflicting implementations: if any
+crate could implement foreign traits for foreign types, two different crates
+could each write their own Display for Vec<u32>, and a program depending on
+both would have two contradictory impls with no way to choose between them.
+Coherence guarantees there is at most one impl of a trait for a type in the
+whole program, so adding a dependency can't silently change or break how
+existing types behave.
+
+2.
+The newtype pattern: wrap the foreign type in your own struct, then implement
+the trait for the wrapper, which is local to your crate:
+
+    struct NumberList(Vec<u32>);
+
+    impl fmt::Display for NumberList {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "[a list of {} numbers]", self.0.len())
+        }
+    }
+
+Now printing a NumberList with {} works, at zero runtime cost since the
+wrapper compiles away.
