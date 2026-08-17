@@ -1,0 +1,36 @@
+Q1.3
+
+1.
+The C version compiles fine (gcc doesn't even warn by default). But sum is
+never given a value, so sum += values[i] reads whatever garbage happened to
+be in that stack slot, which is undefined behaviour. In practice the function
+returns some unpredictable number: if the leftover memory happened to be 0
+you get the right answer and the bug goes unnoticed, on another run or
+another machine you get nonsense. It can also change depending on optimisation
+level, which makes it a really annoying bug to track down.
+
+2.
+The Rust version does not compile. The compiler tracks initialisation and
+rejects it with E0381 ("used binding `sum` is possibly-uninitialized"). It
+even points out the exact paths where sum might never get a value: if the
+loop runs zero times, or if v > 0 is never true, sum is still uninitialised
+when we try to return it (and sum += v reads it too). Since it never
+compiles, it never runs, so there's no runtime behaviour to speak of.
+
+3.
+The philosophy difference: C trusts the programmer and just does what you
+wrote, so the mistake survives until runtime and shows up (maybe) as weird
+results. Rust's approach is that a program which might read uninitialised
+memory shouldn't be allowed to exist at all, so the error is moved from
+runtime to compile time. Catching it at compile time is guaranteed and
+immediate, whereas catching it at runtime depends on luck and testing.
+
+4.
+Zero-initialising everything just swaps one bug for a quieter one. Zero is
+not always the correct starting value: it happens to work for a sum, but if
+the same function computed a product or a minimum, starting at 0 is simply
+wrong, and now the program compiles and runs and confidently produces wrong
+answers with no error anywhere. Forcing the programmer to write the initial
+value means they actually have to decide what it should be. (There's also a
+small performance cost of writing zeros nobody asked for, but the hidden-bug
+problem is the bigger issue.)
