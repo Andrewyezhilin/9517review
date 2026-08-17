@@ -1,0 +1,44 @@
+Q1.1
+
+1) Which feature of Rust prevents this code from compiling? (1 mark)
+
+The borrow checker (Rust's ownership and borrowing rules) rejects this code.
+
+`for n in &numbers` creates a shared (immutable) borrow of `numbers`, which is
+held by the loop's iterator for as long as the loop may keep iterating.
+Inside the loop body, `numbers.push(40)` calls a method that takes `&mut self`,
+i.e. it needs an exclusive (mutable) borrow of `numbers` at the same time.
+
+This violates Rust's aliasing rule: at any point you may have either any number
+of immutable borrows OR exactly one mutable borrow, but never both. The
+compiler therefore reports error E0502: "cannot borrow `numbers` as mutable
+because it is also borrowed as immutable".
+
+This rule exists to prevent iterator invalidation: `push` may reallocate the
+Vec's backing buffer, which would leave the iterator pointing at freed memory
+(a use-after-free / dangling pointer bug that C++ would happily allow).
+
+2) One way to fix it (1 mark)
+
+Do not mutate the Vec while it is borrowed by the iterator. Instead, first
+check (with only an immutable borrow) whether 20 is present, and only then
+push, after the immutable borrow has ended:
+
+    fn main() {
+        let mut numbers = vec![10, 20, 30];
+
+        if numbers.contains(&20) {
+            numbers.push(40);
+        }
+
+        println!("{numbers:?}");
+    }
+
+The immutable borrow taken by `contains` ends before `push` needs its mutable
+borrow, so the two borrows never overlap. The program compiles and prints:
+
+    [10, 20, 30, 40]
+
+(Other acceptable fixes: record a `bool` flag inside the loop and push after
+the loop finishes, or iterate over indices `0..numbers.len()` so no reference
+into the Vec is held across the push.)
